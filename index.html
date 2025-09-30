@@ -1,0 +1,1002 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Confusion Matrix Intuition — Binary Points + Sigmoid</title>
+    <meta name="description" content="Visualize a simple 1D binary dataset with points at p=0 and p=1 and an adjustable sigmoid." />
+
+    <!-- Chart.js (lightweight, no framework) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <style>
+      :root { --bg: #f7fafc; --panel: #ffffff; --text: #0f172a; --muted: #5b6b79; --accent: #3b82f6; }
+      html, body { height: 100%; }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'; background: var(--bg); color: var(--text); }
+
+      .container { padding: 16px 20px 28px; max-width: 1200px; margin: 0 auto; }
+      .panel { background: var(--panel); border: 1px solid #e5eaf0; border-radius: 12px; padding: 16px; box-shadow: 0 1px 2px rgba(16,24,40,0.04); overflow: hidden; }
+  .row { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  .chart-wrap { height: 360px; }
+  @media (min-width: 640px) { .chart-wrap { height: 420px; } }
+  @media (min-width: 980px) { .chart-wrap { height: 520px; } }
+
+  /* controls removed */
+  .muted { color: var(--muted); }
+      .legend-swatch { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 50%; vertical-align: middle; }
+      .swatch-blue { background: rgba(54, 162, 235, 0.9); }
+      .swatch-red { background: rgba(255, 99, 132, 0.9); }
+      .swatch-sig { background: rgba(153, 102, 255, 1); border-radius: 2px; width: 12px; height: 2px; }
+  .footer { margin-top: 14px; font-size: 12px; color: var(--muted); }
+  canvas { background: #ffffff; border: 1px solid #dbe3ea; border-radius: 12px; width: 100% !important; height: 100% !important; }
+
+  /* threshold + confusion matrix */
+  .threshold-controls { margin-top: 16px; display: grid; gap: 8px; }
+  .threshold-controls label { font-size: 13px; color: var(--muted); display: flex; align-items: center; justify-content: space-between; }
+  .threshold-controls code { color: #2f5bd3; background: rgba(59,130,246,0.08); padding: 2px 6px; border-radius: 6px; }
+  .cm-panel { margin-top: 16px; }
+  .cm-grid { display: grid; grid-template-columns: 140px 1fr 1fr; border: 1px solid #e5eaf0; border-radius: 10px; overflow: hidden; }
+  .cm-cell { padding: 10px 12px; border-bottom: 1px solid #e5eaf0; border-right: 1px solid #e5eaf0; background: #fff; }
+  .cm-cell:last-child, .cm-cell:nth-child(3n) { border-right: none; }
+  .cm-row:last-child .cm-cell { border-bottom: none; }
+  .cm-header { background: #f8fafc; font-weight: 600; color: #1f2937; }
+  .cm-subtle { color: var(--muted); font-size: 12px; }
+  .cm-count { font-size: 18px; font-weight: 700; color: #0f172a; }
+  .cm-label { color: #1f2937; font-weight: 600; }
+  .cm-help { margin-top: 8px; color: var(--muted); font-size: 12px; }
+
+  /* section divider */
+  .section-hr { margin: 24px 0; border: 0; height: 1px; background: #e5eaf0; }
+
+  /* practice problems */
+  .problems-panel h3 { margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #0f172a; }
+  .problems-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  @media (min-width: 980px) { .problems-grid { grid-template-columns: repeat(3, 1fr); } }
+  .problem-card { border: 1px solid #e5eaf0; border-radius: 10px; background: #fff; overflow: hidden; display: grid; grid-template-rows: auto 1fr auto; }
+  .problem-header { padding: 10px 12px; background: #f8fafc; border-bottom: 1px solid #e5eaf0; display: flex; justify-content: space-between; align-items: center; }
+  .problem-body { padding: 10px 12px; display: grid; gap: 8px; }
+  .csv-box { max-height: 180px; overflow: auto; background: #f9fbfd; border: 1px solid #e5eaf0; border-radius: 8px; }
+  .csv-box pre { margin: 0; padding: 8px 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 12px; color: #0f172a; }
+  .problem-actions { padding: 10px 12px; display: flex; gap: 8px; border-top: 1px solid #e5eaf0; }
+  .problem-actions button { background: #f3f4f6; color: #111827; border: 1px solid #d1d9e0; border-radius: 8px; padding: 6px 10px; font: inherit; cursor: pointer; }
+  .problem-actions button:hover { border-color: #bfcad6; }
+  .mini-cm { display: grid; grid-template-columns: 120px 1fr 1fr; border: 1px solid #e5eaf0; border-radius: 8px; overflow: hidden; }
+  .mini-cm .cell { padding: 8px 10px; border-bottom: 1px solid #e5eaf0; border-right: 1px solid #e5eaf0; background: #fff; font-size: 13px; }
+  .mini-cm .header { background: #f8fafc; font-weight: 600; color: #1f2937; }
+  .mini-cm .count { font-weight: 700; color: #0f172a; }
+  .mini-cm .cell:nth-child(3n) { border-right: none; }
+  .mini-cm .row-last .cell { border-bottom: none; }
+
+  /* precision section */
+  .precision-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  @media (min-width: 980px) { .precision-grid { grid-template-columns: 1fr 1fr; } }
+  .mini-chart-wrap { height: 300px; }
+  @media (min-width: 640px) { .mini-chart-wrap { height: 320px; } }
+  .precision-info { margin-top: 12px; padding: 10px 12px; border: 1px solid #e5eaf0; border-radius: 10px; background: #fff; }
+  .precision-info .precision-eq { font-weight: 700; margin-bottom: 6px; color: #0f172a; }
+  .precision-info .precision-calc { color: #5b6b79; font-size: 13px; margin-bottom: 6px; }
+  .precision-info code { background: #f5f7fb; border: 1px solid #e5eaf0; padding: 1px 6px; border-radius: 6px; }
+
+  /* precision & recall combined section */
+  .pr-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  @media (min-width: 980px) { .pr-grid { grid-template-columns: 1fr 1fr; } }
+    </style>
+  </head>
+  <body>
+    <main class="container">
+      <div class="row">
+        <section class="panel">
+          <h3>Confusion Matrices</h3>
+          <div class="chart-wrap">
+            <canvas id="chart"></canvas>
+          </div>
+          <div class="footer">
+            <span class="legend-swatch swatch-blue"></span>Blue class at y = 0
+            &nbsp; • &nbsp;
+            <span class="legend-swatch swatch-red"></span>Red class at y = 1
+            &nbsp; • &nbsp;
+            <span class="legend-swatch swatch-sig"></span>Sigmoid p = σ(wx + b)
+          </div>
+        </section>
+      </div>
+      <section class="panel cm-panel">
+        <div class="threshold-controls">
+          <label>Threshold x <code id="tVal">0.00</code></label>
+          <input id="t" type="range" min="0" max="1" step="0.01" value="0" />
+        </div>
+        <div style="height:12px"></div>
+        <div class="cm-grid">
+          <div class="cm-cell cm-header"></div>
+          <div class="cm-cell cm-header">Predicted 0</div>
+          <div class="cm-cell cm-header">Predicted 1</div>
+
+          <div class="cm-cell cm-header">Actual 0</div>
+          <div class="cm-cell"><div class="cm-label">TN</div><div class="cm-count" id="cmTN">0</div></div>
+          <div class="cm-cell"><div class="cm-label">FP</div><div class="cm-count" id="cmFP">0</div></div>
+
+          <div class="cm-cell cm-header">Actual 1</div>
+          <div class="cm-cell"><div class="cm-label">FN</div><div class="cm-count" id="cmFN">0</div></div>
+          <div class="cm-cell"><div class="cm-label">TP</div><div class="cm-count" id="cmTP">0</div></div>
+        </div>
+  
+      </section>
+      
+      <!-- Practice problems (Confusion Matrix) kept near confusion matrix material -->
+      <section class="panel problems-panel" style="margin-top:16px;">
+        <h3>Practice problems</h3>
+        <div class="problems-grid">
+          <div class="problem-card" id="prob1">
+            <div class="problem-header">
+              <div>Problem 1</div>
+              <div>Threshold x = <code id="prob1-thresh">0.00</code></div>
+            </div>
+            <div class="problem-body">
+              <div class="cm-subtle">Dataset (20 rows):</div>
+              <div class="csv-box"><pre id="prob1-csv"></pre></div>
+              <div id="prob1-cm" hidden>
+                <div class="cm-subtle" style="margin:6px 0 6px;">Confusion matrix (revealed answer)</div>
+                <div class="mini-cm">
+                  <div class="cell header"></div>
+                  <div class="cell header">Pred 0</div>
+                  <div class="cell header">Pred 1</div>
+                  <div class="cell header">Actual 0</div>
+                  <div class="cell">TN: <span class="count" id="prob1-tn">0</span></div>
+                  <div class="cell">FP: <span class="count" id="prob1-fp">0</span></div>
+                  <div class="cell header">Actual 1</div>
+                  <div class="cell">FN: <span class="count" id="prob1-fn">0</span></div>
+                  <div class="cell">TP: <span class="count" id="prob1-tp">0</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="problem-actions">
+              <button data-copy="1">Copy CSV</button>
+              <button data-reveal="1">Reveal confusion</button>
+            </div>
+          </div>
+          <div class="problem-card" id="prob2">
+            <div class="problem-header">
+              <div>Problem 2</div>
+              <div>Threshold x = <code id="prob2-thresh">0.00</code></div>
+            </div>
+            <div class="problem-body">
+              <div class="cm-subtle">Dataset (20 rows):</div>
+              <div class="csv-box"><pre id="prob2-csv"></pre></div>
+              <div id="prob2-cm" hidden>
+                <div class="cm-subtle" style="margin:6px 0 6px;">Confusion matrix (revealed answer)</div>
+                <div class="mini-cm">
+                  <div class="cell header"></div>
+                  <div class="cell header">Pred 0</div>
+                  <div class="cell header">Pred 1</div>
+                  <div class="cell header">Actual 0</div>
+                  <div class="cell">TN: <span class="count" id="prob2-tn">0</span></div>
+                  <div class="cell">FP: <span class="count" id="prob2-fp">0</span></div>
+                  <div class="cell header">Actual 1</div>
+                  <div class="cell">FN: <span class="count" id="prob2-fn">0</span></div>
+                  <div class="cell">TP: <span class="count" id="prob2-tp">0</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="problem-actions">
+              <button data-copy="2">Copy CSV</button>
+              <button data-reveal="2">Reveal confusion</button>
+            </div>
+          </div>
+          <div class="problem-card" id="prob3">
+            <div class="problem-header">
+              <div>Problem 3</div>
+              <div>Threshold x = <code id="prob3-thresh">0.00</code></div>
+            </div>
+            <div class="problem-body">
+              <div class="cm-subtle">Dataset (20 rows):</div>
+              <div class="csv-box"><pre id="prob3-csv"></pre></div>
+              <div id="prob3-cm" hidden>
+                <div class="cm-subtle" style="margin:6px 0 6px;">Confusion matrix (revealed answer)</div>
+                <div class="mini-cm">
+                  <div class="cell header"></div>
+                  <div class="cell header">Pred 0</div>
+                  <div class="cell header">Pred 1</div>
+                  <div class="cell header">Actual 0</div>
+                  <div class="cell">TN: <span class="count" id="prob3-tn">0</span></div>
+                  <div class="cell">FP: <span class="count" id="prob3-fp">0</span></div>
+                  <div class="cell header">Actual 1</div>
+                  <div class="cell">FN: <span class="count" id="prob3-fn">0</span></div>
+                  <div class="cell">TP: <span class="count" id="prob3-tp">0</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="problem-actions">
+              <button data-copy="3">Copy CSV</button>
+              <button data-reveal="3">Reveal confusion</button>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <section class="panel" style="margin-top:16px;">
+        <h3>Precision</h3>
+        <div class="threshold-controls" style="margin-bottom:8px;">
+          <label>Threshold x <code id="t2Val">0.00</code></label>
+          <input id="t2" type="range" min="0" max="1" step="0.01" value="0" />
+        </div>
+        <div class="precision-grid">
+          <div>
+            <div class="mini-chart-wrap"><canvas id="precisionPoints"></canvas></div>
+          </div>
+          <div>
+            <div class="mini-chart-wrap"><canvas id="precisionCurve"></canvas></div>
+          </div>
+        </div>
+        <div class="precision-info">
+          <div class="precision-eq">Precision = TP / (TP + FP)</div>
+          <div class="precision-calc">At threshold x = <code id="pTDisp">0.00</code></div>
+          <div class="precision-calc">= <code id="pEqPlug">0 / (0 + 0) = 1.00</code></div>
+          <div class="cm-subtle">We treat precision as 1.00 when no positives are predicted (TP + FP = 0) to avoid division by zero; if you prefer 0.00, we can change that.</div>
+        </div>
+      </section>
+      <section class="panel" style="margin-top:16px;">
+        <h3>Recall</h3>
+        <div class="threshold-controls" style="margin-bottom:8px;">
+          <label>Threshold x <code id="t3Val">0.00</code></label>
+          <input id="t3" type="range" min="0" max="1" step="0.01" value="0" />
+        </div>
+        <div class="precision-grid">
+          <div>
+            <div class="mini-chart-wrap"><canvas id="recallPoints"></canvas></div>
+          </div>
+          <div>
+            <div class="mini-chart-wrap"><canvas id="recallCurve"></canvas></div>
+          </div>
+        </div>
+        <div class="precision-info">
+          <div class="precision-eq">Recall = TP / (TP + FN)</div>
+          <div class="precision-calc">At threshold x = <code id="rTDisp">0.00</code></div>
+          <div class="precision-calc">= <code id="rEqPlug">0 / (0 + 0) = 1.00</code></div>
+          <div class="cm-subtle">We treat recall as 1.00 when there are no actual positives (TP + FN = 0) to avoid division by zero.</div>
+        </div>
+      </section>
+      <section class="panel" style="margin-top:16px;">
+        <h3>Precision & Recall (combined)</h3>
+        <div class="threshold-controls" style="margin-bottom:8px;">
+          <label>Threshold x <code id="t4Val">0.00</code></label>
+          <input id="t4" type="range" min="0" max="1" step="0.01" value="0" />
+        </div>
+        <div class="pr-grid">
+          <div>
+            <div class="mini-chart-wrap"><canvas id="prCurves"></canvas></div>
+          </div>
+          <div>
+            <div class="mini-chart-wrap"><canvas id="prScatter"></canvas></div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Practice sections moved to bottom -->
+      <section class="panel problems-panel" style="margin-top:16px;">
+        <h3>Practice: Precision and Recall</h3>
+        <div class="problems-grid">
+          <div class="problem-card" id="prprob1">
+            <div class="problem-header">
+              <div>PR Problem 1</div>
+              <div>Threshold x = <code id="prprob1-thresh">0.00</code></div>
+            </div>
+            <div class="problem-body">
+              <div class="cm-subtle">Dataset (20 rows):</div>
+              <div class="csv-box"><pre id="prprob1-csv"></pre></div>
+              <div id="prprob1-ans" hidden>
+                <div class="cm-subtle" style="margin:6px 0 6px;">Precision/Recall (revealed answer)</div>
+                <div style="border:1px solid #e5eaf0; border-radius:8px; padding:8px 10px; background:#fff; display:grid; gap:6px;">
+                  <div>Precision: <span class="cm-count" id="prprob1-prec">0.00</span></div>
+                  <div>Recall: <span class="cm-count" id="prprob1-recall">0.00</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="problem-actions">
+              <button data-prcopy="1">Copy CSV</button>
+              <button data-prreveal="1">Reveal precision/recall</button>
+            </div>
+          </div>
+          <div class="problem-card" id="prprob2">
+            <div class="problem-header">
+              <div>PR Problem 2</div>
+              <div>Threshold x = <code id="prprob2-thresh">0.00</code></div>
+            </div>
+            <div class="problem-body">
+              <div class="cm-subtle">Dataset (20 rows):</div>
+              <div class="csv-box"><pre id="prprob2-csv"></pre></div>
+              <div id="prprob2-ans" hidden>
+                <div class="cm-subtle" style="margin:6px 0 6px;">Precision/Recall (revealed answer)</div>
+                <div style="border:1px solid #e5eaf0; border-radius:8px; padding:8px 10px; background:#fff; display:grid; gap:6px;">
+                  <div>Precision: <span class="cm-count" id="prprob2-prec">0.00</span></div>
+                  <div>Recall: <span class="cm-count" id="prprob2-recall">0.00</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="problem-actions">
+              <button data-prcopy="2">Copy CSV</button>
+              <button data-prreveal="2">Reveal precision/recall</button>
+            </div>
+          </div>
+          <div class="problem-card" id="prprob3">
+            <div class="problem-header">
+              <div>PR Problem 3</div>
+              <div>Threshold x = <code id="prprob3-thresh">0.00</code></div>
+            </div>
+            <div class="problem-body">
+              <div class="cm-subtle">Dataset (20 rows):</div>
+              <div class="csv-box"><pre id="prprob3-csv"></pre></div>
+              <div id="prprob3-ans" hidden>
+                <div class="cm-subtle" style="margin:6px 0 6px;">Precision/Recall (revealed answer)</div>
+                <div style="border:1px solid #e5eaf0; border-radius:8px; padding:8px 10px; background:#fff; display:grid; gap:6px;">
+                  <div>Precision: <span class="cm-count" id="prprob3-prec">0.00</span></div>
+                  <div>Recall: <span class="cm-count" id="prprob3-recall">0.00</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="problem-actions">
+              <button data-prcopy="3">Copy CSV</button>
+              <button data-prreveal="3">Reveal precision/recall</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel problems-panel" style="margin-top:16px;">
+        <h3>Practice problems</h3>
+        <div class="problems-grid">
+          <div class="problem-card" id="prob1">
+            <div class="problem-header">
+              <div>Problem 1</div>
+              <div>Threshold x = <code id="prob1-thresh">0.00</code></div>
+            </div>
+            <div class="problem-body">
+              <div class="cm-subtle">Dataset (20 rows):</div>
+              <div class="csv-box"><pre id="prob1-csv"></pre></div>
+              <div id="prob1-cm" hidden>
+                <div class="cm-subtle" style="margin:6px 0 6px;">Confusion matrix (revealed answer)</div>
+                <div class="mini-cm">
+                  <div class="cell header"></div>
+                  <div class="cell header">Pred 0</div>
+                  <div class="cell header">Pred 1</div>
+                  <div class="cell header">Actual 0</div>
+                  <div class="cell">TN: <span class="count" id="prob1-tn">0</span></div>
+                  <div class="cell">FP: <span class="count" id="prob1-fp">0</span></div>
+                  <div class="cell header">Actual 1</div>
+                  <div class="cell">FN: <span class="count" id="prob1-fn">0</span></div>
+                  <div class="cell">TP: <span class="count" id="prob1-tp">0</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="problem-actions">
+              <button data-copy="1">Copy CSV</button>
+              <button data-reveal="1">Reveal confusion</button>
+            </div>
+          </div>
+          <div class="problem-card" id="prob2">
+            <div class="problem-header">
+              <div>Problem 2</div>
+              <div>Threshold x = <code id="prob2-thresh">0.00</code></div>
+            </div>
+            <div class="problem-body">
+              <div class="cm-subtle">Dataset (20 rows):</div>
+              <div class="csv-box"><pre id="prob2-csv"></pre></div>
+              <div id="prob2-cm" hidden>
+                <div class="cm-subtle" style="margin:6px 0 6px;">Confusion matrix (revealed answer)</div>
+                <div class="mini-cm">
+                  <div class="cell header"></div>
+                  <div class="cell header">Pred 0</div>
+                  <div class="cell header">Pred 1</div>
+                  <div class="cell header">Actual 0</div>
+                  <div class="cell">TN: <span class="count" id="prob2-tn">0</span></div>
+                  <div class="cell">FP: <span class="count" id="prob2-fp">0</span></div>
+                  <div class="cell header">Actual 1</div>
+                  <div class="cell">FN: <span class="count" id="prob2-fn">0</span></div>
+                  <div class="cell">TP: <span class="count" id="prob2-tp">0</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="problem-actions">
+              <button data-copy="2">Copy CSV</button>
+              <button data-reveal="2">Reveal confusion</button>
+            </div>
+          </div>
+          <div class="problem-card" id="prob3">
+            <div class="problem-header">
+              <div>Problem 3</div>
+              <div>Threshold x = <code id="prob3-thresh">0.00</code></div>
+            </div>
+            <div class="problem-body">
+              <div class="cm-subtle">Dataset (20 rows):</div>
+              <div class="csv-box"><pre id="prob3-csv"></pre></div>
+              <div id="prob3-cm" hidden>
+                <div class="cm-subtle" style="margin:6px 0 6px;">Confusion matrix (revealed answer)</div>
+                <div class="mini-cm">
+                  <div class="cell header"></div>
+                  <div class="cell header">Pred 0</div>
+                  <div class="cell header">Pred 1</div>
+                  <div class="cell header">Actual 0</div>
+                  <div class="cell">TN: <span class="count" id="prob3-tn">0</span></div>
+                  <div class="cell">FP: <span class="count" id="prob3-fp">0</span></div>
+                  <div class="cell header">Actual 1</div>
+                  <div class="cell">FN: <span class="count" id="prob3-fn">0</span></div>
+                  <div class="cell">TP: <span class="count" id="prob3-tp">0</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="problem-actions">
+              <button data-copy="3">Copy CSV</button>
+              <button data-reveal="3">Reveal confusion</button>
+            </div>
+          </div>
+        </div>
+      </section>
+      <hr class="section-hr" />
+    </main>
+
+    <script>
+      // Utilities
+      const rand = (a, b) => a + Math.random() * (b - a);
+      function randnBoxMuller() {
+        // Standard normal using Box-Muller transform
+        let u = 0, v = 0;
+        while (u === 0) u = Math.random();
+        while (v === 0) v = Math.random();
+        return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+      }
+      const normal = (mu, sd) => mu + sd * randnBoxMuller();
+
+      function sigmoid(z) { return 1 / (1 + Math.exp(-z)); }
+
+      // Data generation
+      function makeClassData(n, mu, sd, y) {
+        const pts = [];
+        for (let i = 0; i < n; i++) {
+          const x = normal(mu, sd);
+          pts.push({ x, y });
+        }
+        return pts;
+      }
+
+      function extent(arr) {
+        let min = Infinity, max = -Infinity;
+        for (const v of arr) { if (v < min) min = v; if (v > max) max = v; }
+        return [min, max];
+      }
+
+      // Initial parameters
+      const state = {
+        w: 1.5,
+        b: 0.0,
+        n: 40,
+        mu0: -1.0, sd0: 1.0,
+        mu1: 1.5, sd1: 1.0,
+        showSigmoid: true,
+        t: 0.0,
+        t2: 0.0,
+        t3: 0.0,
+        blue: [], red: [],
+      };
+
+      function generatePoints() {
+        state.blue = makeClassData(state.n, state.mu0, state.sd0, 0);
+        state.red  = makeClassData(state.n, state.mu1, state.sd1, 1);
+      }
+
+      function makeSigmoidSeries(xs) {
+        const w = state.w, b = state.b;
+        return xs.map(x => ({ x, y: sigmoid(w * x + b) }));
+      }
+
+      // Build chart
+      const ctx = document.getElementById('chart').getContext('2d');
+      generatePoints();
+      const allX = state.blue.map(p => p.x).concat(state.red.map(p => p.x));
+      let [xMin, xMax] = extent(allX);
+      const pad = (xMax - xMin) * 0.2 + 1e-6;
+      xMin -= pad; xMax += pad;
+      function linspace(a, b, n) {
+        const out = []; const step = (b - a) / (n - 1);
+        for (let i = 0; i < n; i++) out.push(a + step * i);
+        return out;
+      }
+      const xs = linspace(xMin, xMax, 300);
+      // Sync main threshold slider min/max with x-range and start at left edge
+      const tInput = document.getElementById('t');
+      const tLabel = document.getElementById('tVal');
+      if (tInput) {
+        tInput.min = String(Math.floor(xMin));
+        tInput.max = String(Math.ceil(xMax));
+        tInput.step = '0.01';
+        tInput.value = String(xMin.toFixed(2));
+        state.t = parseFloat(tInput.value);
+        if (tLabel) tLabel.textContent = state.t.toFixed(2);
+      }
+      // Precision slider uses independent state
+      const t2Input = document.getElementById('t2');
+      const t2Label = document.getElementById('t2Val');
+      if (t2Input) {
+        t2Input.min = String(Math.floor(xMin));
+        t2Input.max = String(Math.ceil(xMax));
+        t2Input.step = '0.01';
+        t2Input.value = String(xMin.toFixed(2));
+        state.t2 = parseFloat(t2Input.value);
+        if (t2Label) t2Label.textContent = state.t2.toFixed(2);
+      }
+      // Recall slider
+      const t3Input = document.getElementById('t3');
+      const t3Label = document.getElementById('t3Val');
+      if (t3Input) {
+        t3Input.min = String(Math.floor(xMin));
+        t3Input.max = String(Math.ceil(xMax));
+        t3Input.step = '0.01';
+        t3Input.value = String(xMin.toFixed(2));
+        state.t3 = parseFloat(t3Input.value);
+        if (t3Label) t3Label.textContent = state.t3.toFixed(2);
+      }
+
+      const data = {
+        datasets: [
+          {
+            label: 'Blue class (y=0)',
+            type: 'scatter',
+            data: state.blue,
+            backgroundColor: 'rgba(54, 162, 235, 0.9)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            pointRadius: 4,
+            pointHoverRadius: 0,
+          },
+          {
+            label: 'Red class (y=1)',
+            type: 'scatter',
+            data: state.red,
+            backgroundColor: 'rgba(255, 99, 132, 0.9)',
+            borderColor: 'rgba(255, 99, 132, 1)',
+            pointRadius: 4,
+            pointHoverRadius: 0,
+          },
+          {
+            label: 'Sigmoid p = σ(wx + b)',
+            type: 'line',
+            data: makeSigmoidSeries(xs),
+            borderColor: 'rgba(153, 102, 255, 1)',
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            cubicInterpolationMode: 'monotone',
+            tension: 0.0,
+            hidden: !state.showSigmoid,
+          },
+          {
+            label: 'Threshold x',
+            type: 'line',
+            data: [ { x: state.t, y: 0 }, { x: state.t, y: 1 } ],
+            borderColor: 'rgba(107, 114, 128, 1)',
+            borderWidth: 1.5,
+            borderDash: [6, 6],
+            pointRadius: 0,
+            pointHoverRadius: 0,
+          }
+        ]
+      };
+
+      const chart = new Chart(ctx, {
+        type: 'scatter',
+        data,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          // Disable all mouse/touch events to remove hover functionality entirely
+          events: [],
+          animation: { duration: 250 },
+          interaction: { mode: 'nearest', axis: 'x', intersect: false },
+          plugins: {
+            legend: { display: true, position: 'top', labels: { color: '#1f2937' } },
+            tooltip: { enabled: false }
+          },
+          scales: {
+            x: {
+              type: 'linear',
+              grid: { color: 'rgba(0,0,0,0.06)' },
+              ticks: { color: '#475569' },
+              title: { display: true, text: 'feature x', color: '#1f2937' },
+            },
+            y: {
+              min: -0.1, max: 1.1,
+              grid: { color: 'rgba(0,0,0,0.06)' },
+              ticks: { color: '#475569' },
+              title: { display: true, text: 'p', color: '#1f2937' },
+            }
+          }
+        }
+      });
+      // Threshold + confusion matrix logic
+      const $ = (id) => document.getElementById(id);
+      function updateThresholdLine() {
+        const ds = chart.data.datasets[3]; // threshold line dataset
+        ds.data = [ { x: state.t, y: 0 }, { x: state.t, y: 1 } ];
+        chart.update('none');
+      }
+
+      function computeConfusion() {
+        const t = state.t; // threshold on x
+        let TP = 0, TN = 0, FP = 0, FN = 0;
+        for (const p of state.blue) { // y=0
+          const pred = p.x >= t ? 1 : 0;
+          if (pred === 1) FP++; else TN++;
+        }
+        for (const p of state.red) { // y=1
+          const pred = p.x >= t ? 1 : 0;
+          if (pred === 1) TP++; else FN++;
+        }
+        return { TP, FP, TN, FN };
+      }
+
+      function renderConfusion() {
+        const { TP, FP, TN, FN } = computeConfusion();
+  const tVal = $('tVal'); if (tVal) tVal.textContent = state.t.toFixed(2);
+        const cmTP = $('cmTP'); if (cmTP) cmTP.textContent = String(TP);
+        const cmFP = $('cmFP'); if (cmFP) cmFP.textContent = String(FP);
+        const cmTN = $('cmTN'); if (cmTN) cmTN.textContent = String(TN);
+        const cmFN = $('cmFN'); if (cmFN) cmFN.textContent = String(FN);
+      }
+
+      const tSlider = $('t');
+      if (tSlider) {
+        tSlider.addEventListener('input', (e) => {
+          state.t = parseFloat(e.target.value);
+          updateThresholdLine();
+          renderConfusion();
+        });
+      }
+
+      // Initial matrix render
+      renderConfusion();
+
+      // ---------------------------
+      // Practice Problems logic
+      // ---------------------------
+      function makeProblem(n, mu0, sd0, mu1, sd1, thresh) {
+        const blue = makeClassData(n/2, mu0, sd0, 0);
+        const red  = makeClassData(n/2, mu1, sd1, 1);
+        return { blue, red, thresh };
+      }
+
+      function cmFromProblem(prob) {
+        const t = prob.thresh;
+        let TP = 0, TN = 0, FP = 0, FN = 0;
+        for (const p of prob.blue) { const pred = p.x >= t ? 1 : 0; if (pred === 1) FP++; else TN++; }
+        for (const p of prob.red)  { const pred = p.x >= t ? 1 : 0; if (pred === 1) TP++; else FN++; }
+        return { TP, FP, TN, FN };
+      }
+
+      function toCSV(prob) {
+        const rows = [['x','y']];
+        for (const p of prob.blue) rows.push([p.x.toFixed(3), 0]);
+        for (const p of prob.red) rows.push([p.x.toFixed(3), 1]);
+        return rows.map(r => r.join(',')).join('\n');
+      }
+
+      function fillProblemUI(id, prob) {
+        const csvEl = document.getElementById(`prob${id}-csv`);
+        const thEl = document.getElementById(`prob${id}-thresh`);
+        if (csvEl) csvEl.textContent = toCSV(prob);
+        if (thEl) thEl.textContent = prob.thresh.toFixed(2);
+        const cm = cmFromProblem(prob);
+        const map = [['tn', cm.TN], ['fp', cm.FP], ['fn', cm.FN], ['tp', cm.TP]];
+        for (const [k, v] of map) {
+          const el = document.getElementById(`prob${id}-${k}`);
+          if (el) el.textContent = String(v);
+        }
+      }
+
+      function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text);
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = text; document.body.appendChild(ta); ta.select();
+          try { document.execCommand('copy'); } catch(_) {}
+          document.body.removeChild(ta);
+        }
+      }
+
+      // Generate three different problems with varied separations
+      const prob1 = makeProblem(20, -1.5, 0.8, 1.2, 0.9, 0.10);
+      const prob2 = makeProblem(20, -0.3, 0.6, 0.7, 0.6, 0.20);
+      const prob3 = makeProblem(20, -2.0, 1.2, 2.0, 1.2, 0.00);
+      fillProblemUI(1, prob1);
+      fillProblemUI(2, prob2);
+      fillProblemUI(3, prob3);
+
+      // Wire buttons
+      document.querySelectorAll('[data-copy]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-copy');
+          const csvEl = document.getElementById(`prob${id}-csv`);
+          if (csvEl) copyText(csvEl.textContent || '');
+        });
+      });
+      document.querySelectorAll('[data-reveal]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-reveal');
+          const cmWrap = document.getElementById(`prob${id}-cm`);
+          if (cmWrap) cmWrap.hidden = false;
+        });
+      });
+
+      // ---------------------------
+      // Practice: Precision & Recall logic
+      // ---------------------------
+      function precisionRecallFromProblem(prob) {
+        const t = prob.thresh;
+        let TP = 0, FP = 0, FN = 0;
+        for (const p of prob.blue) { if (p.x >= t) FP++; }
+        for (const p of prob.red)  { if (p.x >= t) TP++; else FN++; }
+        const precision = (TP + FP) === 0 ? 1.0 : TP / (TP + FP);
+        const recall = (TP + (FN)) === 0 ? 1.0 : TP / (TP + FN);
+        return { precision, recall };
+      }
+
+      function fillPRProblemUI(id, prob) {
+        const csvEl = document.getElementById(`prprob${id}-csv`);
+        const thEl  = document.getElementById(`prprob${id}-thresh`);
+        if (csvEl) csvEl.textContent = toCSV(prob);
+        if (thEl) thEl.textContent = prob.thresh.toFixed(2);
+        const { precision, recall } = precisionRecallFromProblem(prob);
+        const precEl = document.getElementById(`prprob${id}-prec`);
+        const recEl  = document.getElementById(`prprob${id}-recall`);
+        if (precEl) precEl.textContent = precision.toFixed(2);
+        if (recEl)  recEl.textContent  = recall.toFixed(2);
+      }
+
+      // Three PR problems with varied separation/thresholds
+      const prProb1 = makeProblem(20, -1.2, 0.8, 1.1, 0.9, 0.05);
+      const prProb2 = makeProblem(20, -0.6, 0.7, 0.6, 0.7, 0.20);
+      const prProb3 = makeProblem(20, -2.0, 1.0, 1.8, 1.0, -0.10);
+      fillPRProblemUI(1, prProb1);
+      fillPRProblemUI(2, prProb2);
+      fillPRProblemUI(3, prProb3);
+
+      // Wire PR problem buttons
+      document.querySelectorAll('[data-prcopy]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-prcopy');
+          const csvEl = document.getElementById(`prprob${id}-csv`);
+          if (csvEl) copyText(csvEl.textContent || '');
+        });
+      });
+      document.querySelectorAll('[data-prreveal]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-prreveal');
+          const ans = document.getElementById(`prprob${id}-ans`);
+          if (ans) ans.hidden = false;
+        });
+      });
+
+      // ---------------------------
+      // Precision section charts
+      // ---------------------------
+      const ppCtx = document.getElementById('precisionPoints').getContext('2d');
+      const pcCtx = document.getElementById('precisionCurve').getContext('2d');
+
+      // Build a small points chart (mirrors main, with threshold line)
+      const miniData = {
+        datasets: [
+          { label: 'Blue (y=0)', type: 'scatter', data: state.blue, backgroundColor: 'rgba(54, 162, 235, 0.9)', borderColor: 'rgba(54,162,235,1)', pointRadius: 3, pointHoverRadius: 0 },
+          { label: 'Red (y=1)', type: 'scatter', data: state.red, backgroundColor: 'rgba(255,99,132,0.9)', borderColor: 'rgba(255,99,132,1)', pointRadius: 3, pointHoverRadius: 0 },
+          { label: 'Threshold x', type: 'line', data: [ { x: state.t2, y: 0 }, { x: state.t2, y: 1 } ], borderColor: 'rgba(107,114,128,1)', borderWidth: 1.5, borderDash: [6,6], pointRadius: 0, pointHoverRadius: 0 }
+        ]
+      };
+      const miniPointsChart = new Chart(ppCtx, {
+        type: 'scatter', data: miniData,
+        options: { responsive: true, maintainAspectRatio: false, events: [],
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          scales: { x: { type: 'linear', min: chart.options.scales.x.min, max: chart.options.scales.x.max, grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { color: '#475569' } }, y: { min: -0.1, max: 1.1, grid: { color:'rgba(0,0,0,0.06)' }, ticks: { color:'#475569' } } }
+        }
+      });
+
+      // Precision vs threshold curve
+      function precisionAt(threshold) {
+        // Precision = TP / (TP + FP), define 1.0 if (TP+FP)==0 to avoid NaN
+        let TP = 0, FP = 0;
+        for (const p of state.blue) { if (p.x >= threshold) FP++; }
+        for (const p of state.red)  { if (p.x >= threshold) TP++; }
+        return (TP + FP) === 0 ? 1.0 : TP / (TP + FP);
+      }
+      const txs = linspace(xMin, xMax, 200);
+      const pSeries = txs.map(x => ({ x, y: precisionAt(x) }));
+      const precisionData = {
+        datasets: [
+          { label: 'Precision vs threshold', type: 'line', data: pSeries, borderColor: 'rgba(16,185,129,1)', borderWidth: 2, pointRadius: 0, pointHoverRadius: 0, cubicInterpolationMode: 'monotone', tension: 0.1 },
+          { label: 'Current threshold', type: 'scatter', data: [ { x: state.t2, y: precisionAt(state.t2) } ], backgroundColor: 'rgba(16,185,129,1)', borderColor: 'rgba(16,185,129,1)', pointRadius: 4, pointHoverRadius: 0 }
+        ]
+      };
+      const precisionChart = new Chart(pcCtx, {
+        type: 'line', data: precisionData,
+        options: { responsive: true, maintainAspectRatio: false, events: [],
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          scales: { x: { type: 'linear', min: chart.options.scales.x.min, max: chart.options.scales.x.max, grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { color: '#475569' }, title: { display:true, text: 'threshold x', color:'#1f2937' } }, y: { min: 0, max: 1.05, grid: { color:'rgba(0,0,0,0.06)' }, ticks: { color:'#475569' }, title: { display:true, text:'precision', color:'#1f2937' } } }
+        }
+      });
+
+      function updatePrecisionSection() {
+        // Move threshold line in mini points chart
+        miniPointsChart.data.datasets[2].data = [ { x: state.t2, y: 0 }, { x: state.t2, y: 1 } ];
+        miniPointsChart.update('none');
+        // Move point on precision curve
+        const y = precisionAt(state.t2);
+        precisionChart.data.datasets[1].data = [ { x: state.t2, y } ];
+        precisionChart.update('none');
+        // Update formula display
+        let TP = 0, FP = 0;
+        for (const p of state.blue) { if (p.x >= state.t2) FP++; }
+        for (const p of state.red)  { if (p.x >= state.t2) TP++; }
+        const pTDisp = document.getElementById('pTDisp');
+        const pEqPlug = document.getElementById('pEqPlug');
+        if (pTDisp) pTDisp.textContent = state.t2.toFixed(2);
+        if (pEqPlug) {
+          const prec = (TP + FP === 0 ? 1.0 : TP / (TP + FP));
+          pEqPlug.textContent = `${TP} / (${TP} + ${FP}) = ${prec.toFixed(2)}`;
+        }
+      }
+
+      // Hook into threshold slider
+      if (t2Input) {
+        t2Input.addEventListener('input', (e) => {
+          state.t2 = parseFloat(e.target.value);
+          if (t2Label) t2Label.textContent = state.t2.toFixed(2);
+          updatePrecisionSection();
+        });
+      }
+
+      // Initial paint
+      updatePrecisionSection();
+
+      // ---------------------------
+      // Recall section charts
+      // ---------------------------
+      const rpCtx = document.getElementById('recallPoints')?.getContext('2d');
+      const rcCtx = document.getElementById('recallCurve')?.getContext('2d');
+      function recallAt(threshold) {
+        // Recall = TP / (TP + FN); define 1.0 if (TP+FN)==0
+        let TP = 0, FN = 0;
+        for (const p of state.red) { // actual positives
+          const pred = p.x >= threshold ? 1 : 0;
+          if (pred === 1) TP++; else FN++;
+        }
+        return (TP + FN) === 0 ? 1.0 : TP / (TP + FN);
+      }
+      let recallPointsChart = null, recallChart = null;
+      if (rpCtx && rcCtx) {
+        const miniDataR = {
+          datasets: [
+            { label: 'Blue (y=0)', type: 'scatter', data: state.blue, backgroundColor: 'rgba(54,162,235,0.9)', borderColor: 'rgba(54,162,235,1)', pointRadius: 3, pointHoverRadius: 0 },
+            { label: 'Red (y=1)', type: 'scatter', data: state.red, backgroundColor: 'rgba(255,99,132,0.9)', borderColor: 'rgba(255,99,132,1)', pointRadius: 3, pointHoverRadius: 0 },
+            { label: 'Threshold x', type: 'line', data: [ { x: state.t3, y: 0 }, { x: state.t3, y: 1 } ], borderColor: 'rgba(107,114,128,1)', borderWidth: 1.5, borderDash: [6,6], pointRadius: 0, pointHoverRadius: 0 }
+          ]
+        };
+        recallPointsChart = new Chart(rpCtx, {
+          type: 'scatter', data: miniDataR,
+          options: { responsive: true, maintainAspectRatio: false, events: [], plugins: { legend: { display:false }, tooltip:{ enabled:false } }, scales: { x: { type:'linear', min: chart.options.scales.x.min, max: chart.options.scales.x.max, grid:{ color:'rgba(0,0,0,0.06)' }, ticks:{ color:'#475569' } }, y: { min:-0.1, max:1.1, grid:{ color:'rgba(0,0,0,0.06)' }, ticks:{ color:'#475569' } } } }
+        });
+        const rxs = linspace(xMin, xMax, 200);
+        const rSeries = rxs.map(x => ({ x, y: recallAt(x) }));
+        const recallData = {
+          datasets: [
+            { label: 'Recall vs threshold', type: 'line', data: rSeries, borderColor: 'rgba(59,130,246,1)', borderWidth: 2, pointRadius: 0, pointHoverRadius: 0, cubicInterpolationMode:'monotone', tension:0.1 },
+            { label: 'Current threshold', type: 'scatter', data: [ { x: state.t3, y: recallAt(state.t3) } ], backgroundColor: 'rgba(59,130,246,1)', borderColor:'rgba(59,130,246,1)', pointRadius: 4, pointHoverRadius: 0 }
+          ]
+        };
+        recallChart = new Chart(rcCtx, {
+          type: 'line', data: recallData,
+          options: { responsive: true, maintainAspectRatio: false, events: [], plugins: { legend: { display:false }, tooltip:{ enabled:false } }, scales: { x:{ type:'linear', min: chart.options.scales.x.min, max: chart.options.scales.x.max, grid:{ color:'rgba(0,0,0,0.06)' }, ticks:{ color:'#475569' }, title:{ display:true, text:'threshold x', color:'#1f2937' } }, y:{ min:0, max:1.05, grid:{ color:'rgba(0,0,0,0.06)' }, ticks:{ color:'#475569' }, title:{ display:true, text:'recall', color:'#1f2937' } } } }
+        });
+      }
+
+      function updateRecallSection() {
+        if (!recallPointsChart || !recallChart) return;
+        recallPointsChart.data.datasets[2].data = [ { x: state.t3, y: 0 }, { x: state.t3, y: 1 } ];
+        recallPointsChart.update('none');
+        const y = recallAt(state.t3);
+        recallChart.data.datasets[1].data = [ { x: state.t3, y } ];
+        recallChart.update('none');
+        // Update formula display
+        let TP = 0, FN = 0;
+        for (const p of state.red)  { const pred = p.x >= state.t3 ? 1 : 0; if (pred === 1) TP++; else FN++; }
+        const rTDisp = document.getElementById('rTDisp');
+        const rEqPlug = document.getElementById('rEqPlug');
+        if (rTDisp) rTDisp.textContent = state.t3.toFixed(2);
+        if (rEqPlug) rEqPlug.textContent = `${TP} / (${TP} + ${FN}) = ${(TP + FN === 0 ? 1.0 : TP / (TP + FN)).toFixed(2)}`;
+      }
+
+      if (t3Input) {
+        t3Input.addEventListener('input', (e) => {
+          state.t3 = parseFloat(e.target.value);
+          if (t3Label) t3Label.textContent = state.t3.toFixed(2);
+          updateRecallSection();
+        });
+      }
+
+      updateRecallSection();
+
+      // ---------------------------
+      // Combined Precision & Recall section
+      // ---------------------------
+      const t4Input = document.getElementById('t4');
+      const t4Label = document.getElementById('t4Val');
+      let t4 = 0.0;
+      if (t4Input) {
+        t4Input.min = String(Math.floor(xMin));
+        t4Input.max = String(Math.ceil(xMax));
+        t4Input.step = '0.01';
+        t4Input.value = String(xMin.toFixed(2));
+        t4 = parseFloat(t4Input.value);
+        if (t4Label) t4Label.textContent = t4.toFixed(2);
+      }
+
+      function precisionAtX(th) {
+        let TP = 0, FP = 0;
+        for (const p of state.blue) { if (p.x >= th) FP++; }
+        for (const p of state.red)  { if (p.x >= th) TP++; }
+        return (TP + FP) === 0 ? 1.0 : TP / (TP + FP);
+      }
+      function recallAtX(th) {
+        let TP = 0, FN = 0;
+        for (const p of state.red) { const pred = p.x >= th ? 1 : 0; if (pred === 1) TP++; else FN++; }
+        return (TP + FN) === 0 ? 1.0 : TP / (TP + FN);
+      }
+
+      const prCtx = document.getElementById('prCurves')?.getContext('2d');
+      const prsCtx = document.getElementById('prScatter')?.getContext('2d');
+      let prCurvesChart = null, prScatterChart = null;
+      if (prCtx && prsCtx) {
+        const xs2 = linspace(xMin, xMax, 200);
+        const precSeries = xs2.map(x => ({ x, y: precisionAtX(x) }));
+        const recSeries = xs2.map(x => ({ x, y: recallAtX(x) }));
+        prCurvesChart = new Chart(prCtx, {
+          type: 'line',
+          data: { datasets: [
+            { label:'Precision', type:'line', data: precSeries, borderColor:'rgba(16,185,129,1)', borderWidth:2, pointRadius:0, pointHoverRadius:0, tension:0.1 },
+            { label:'Recall', type:'line', data: recSeries, borderColor:'rgba(59,130,246,1)', borderWidth:2, pointRadius:0, pointHoverRadius:0, tension:0.1 },
+            { label:'Current threshold', type:'scatter', data:[{ x: t4, y: precisionAtX(t4) }], backgroundColor:'rgba(16,185,129,1)', pointRadius:4, pointHoverRadius:0 },
+            { label:'Current threshold', type:'scatter', data:[{ x: t4, y: recallAtX(t4) }], backgroundColor:'rgba(59,130,246,1)', pointRadius:4, pointHoverRadius:0 }
+          ]},
+          options: { responsive:true, maintainAspectRatio:false, events:[], plugins:{ legend:{ display:true, labels:{ color:'#1f2937' } }, tooltip:{ enabled:false } }, scales:{ x:{ type:'linear', min: chart.options.scales.x.min, max: chart.options.scales.x.max, grid:{ color:'rgba(0,0,0,0.06)' }, ticks:{ color:'#475569' }, title:{ display:true, text:'threshold x', color:'#1f2937' } }, y:{ min:0, max:1.05, grid:{ color:'rgba(0,0,0,0.06)' }, ticks:{ color:'#475569' } } } }
+        });
+
+        // PR scatter (recall vs precision)
+        const prPoints = xs2.map(x => ({ x: precisionAtX(x), y: recallAtX(x) }));
+        prScatterChart = new Chart(prsCtx, {
+          type: 'line',
+          data: { datasets: [
+            { label:'Recall vs Precision', type:'line', data: prPoints, borderColor:'#000000', borderWidth:2, pointRadius:0, pointHoverRadius:0, tension:0.1 },
+            { label:'Precision marker', type:'scatter', data:[{ x: precisionAtX(t4), y: 0 }], backgroundColor:'rgba(16,185,129,1)', borderColor:'rgba(16,185,129,1)', pointRadius:5, pointHoverRadius:0 },
+            { label:'Recall marker', type:'scatter', data:[{ x: 0, y: recallAtX(t4) }], backgroundColor:'rgba(59,130,246,1)', borderColor:'rgba(59,130,246,1)', pointRadius:5, pointHoverRadius:0 },
+            { label:'Current (P,R)', type:'scatter', data:[{ x: precisionAtX(t4), y: recallAtX(t4) }], backgroundColor:'#000000', borderColor:'#000000', pointRadius:5, pointHoverRadius:0 }
+          ]},
+          options: { responsive:true, maintainAspectRatio:false, events:[], plugins:{ legend:{ display:true, labels:{ color:'#1f2937' } }, tooltip:{ enabled:false } }, scales:{ x:{ type:'linear', min:-0.02, max:1.02, grid:{ color:'rgba(0,0,0,0.06)' }, ticks:{ color:'#475569' }, title:{ display:true, text:'precision', color:'#1f2937' } }, y:{ type:'linear', min:-0.02, max:1.02, grid:{ color:'rgba(0,0,0,0.06)' }, ticks:{ color:'#475569' }, title:{ display:true, text:'recall', color:'#1f2937' } } } }
+        });
+      }
+
+      function updatePRCombined() {
+        if (!prCurvesChart || !prScatterChart) return;
+        prCurvesChart.data.datasets[2].data = [ { x: t4, y: precisionAtX(t4) } ];
+        prCurvesChart.data.datasets[3].data = [ { x: t4, y: recallAtX(t4) } ];
+        prCurvesChart.update('none');
+        const pNow = precisionAtX(t4);
+        const rNow = recallAtX(t4);
+        // dataset[1]: precision marker on x-axis, dataset[2]: recall marker on y-axis, dataset[3]: current (p,r)
+        prScatterChart.data.datasets[1].data = [ { x: pNow, y: 0 } ];
+        prScatterChart.data.datasets[2].data = [ { x: 0, y: rNow } ];
+        prScatterChart.data.datasets[3].data = [ { x: pNow, y: rNow } ];
+        prScatterChart.update('none');
+        if (t4Label) t4Label.textContent = t4.toFixed(2);
+      }
+
+      if (t4Input) {
+        t4Input.addEventListener('input', (e) => { t4 = parseFloat(e.target.value); updatePRCombined(); });
+      }
+
+      updatePRCombined();
+    </script>
+  </body>
+</html>
