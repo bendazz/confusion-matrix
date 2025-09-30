@@ -340,93 +340,38 @@
         </div>
       </section>
 
-      <section class="panel problems-panel" style="margin-top:16px;">
-        <h3>Practice problems</h3>
-        <div class="problems-grid">
-          <div class="problem-card" id="prob1">
-            <div class="problem-header">
-              <div>Problem 1</div>
-              <div>Threshold x = <code id="prob1-thresh">0.00</code></div>
-            </div>
-            <div class="problem-body">
-              <div class="cm-subtle">Dataset (20 rows):</div>
-              <div class="csv-box"><pre id="prob1-csv"></pre></div>
-              <div id="prob1-cm" hidden>
-                <div class="cm-subtle" style="margin:6px 0 6px;">Confusion matrix (revealed answer)</div>
-                <div class="mini-cm">
-                  <div class="cell header"></div>
-                  <div class="cell header">Pred 0</div>
-                  <div class="cell header">Pred 1</div>
-                  <div class="cell header">Actual 0</div>
-                  <div class="cell">TN: <span class="count" id="prob1-tn">0</span></div>
-                  <div class="cell">FP: <span class="count" id="prob1-fp">0</span></div>
-                  <div class="cell header">Actual 1</div>
-                  <div class="cell">FN: <span class="count" id="prob1-fn">0</span></div>
-                  <div class="cell">TP: <span class="count" id="prob1-tp">0</span></div>
-                </div>
-              </div>
-            </div>
-            <div class="problem-actions">
-              <button data-copy="1">Copy CSV</button>
-              <button data-reveal="1">Reveal confusion</button>
-            </div>
+      <!-- ROC section (moved below PR practice) -->
+      <section class="panel" style="margin-top:16px;">
+        <h3>ROC (fallout / false positive rate)</h3>
+        <div class="threshold-controls" style="margin-bottom:8px;">
+          <label>Threshold x <code id="t5Val">0.00</code></label>
+          <input id="t5" type="range" min="0" max="1" step="0.01" value="0" />
+        </div>
+        <div class="precision-grid">
+          <div>
+            <div class="mini-chart-wrap"><canvas id="rocPoints"></canvas></div>
           </div>
-          <div class="problem-card" id="prob2">
-            <div class="problem-header">
-              <div>Problem 2</div>
-              <div>Threshold x = <code id="prob2-thresh">0.00</code></div>
-            </div>
-            <div class="problem-body">
-              <div class="cm-subtle">Dataset (20 rows):</div>
-              <div class="csv-box"><pre id="prob2-csv"></pre></div>
-              <div id="prob2-cm" hidden>
-                <div class="cm-subtle" style="margin:6px 0 6px;">Confusion matrix (revealed answer)</div>
-                <div class="mini-cm">
-                  <div class="cell header"></div>
-                  <div class="cell header">Pred 0</div>
-                  <div class="cell header">Pred 1</div>
-                  <div class="cell header">Actual 0</div>
-                  <div class="cell">TN: <span class="count" id="prob2-tn">0</span></div>
-                  <div class="cell">FP: <span class="count" id="prob2-fp">0</span></div>
-                  <div class="cell header">Actual 1</div>
-                  <div class="cell">FN: <span class="count" id="prob2-fn">0</span></div>
-                  <div class="cell">TP: <span class="count" id="prob2-tp">0</span></div>
-                </div>
-              </div>
-            </div>
-            <div class="problem-actions">
-              <button data-copy="2">Copy CSV</button>
-              <button data-reveal="2">Reveal confusion</button>
-            </div>
+          <div>
+            <div class="mini-chart-wrap"><canvas id="rocFPR"></canvas></div>
+            <div class="mini-chart-wrap" style="margin-top:12px;"><canvas id="rocTPR"></canvas></div>
           </div>
-          <div class="problem-card" id="prob3">
-            <div class="problem-header">
-              <div>Problem 3</div>
-              <div>Threshold x = <code id="prob3-thresh">0.00</code></div>
-            </div>
-            <div class="problem-body">
-              <div class="cm-subtle">Dataset (20 rows):</div>
-              <div class="csv-box"><pre id="prob3-csv"></pre></div>
-              <div id="prob3-cm" hidden>
-                <div class="cm-subtle" style="margin:6px 0 6px;">Confusion matrix (revealed answer)</div>
-                <div class="mini-cm">
-                  <div class="cell header"></div>
-                  <div class="cell header">Pred 0</div>
-                  <div class="cell header">Pred 1</div>
-                  <div class="cell header">Actual 0</div>
-                  <div class="cell">TN: <span class="count" id="prob3-tn">0</span></div>
-                  <div class="cell">FP: <span class="count" id="prob3-fp">0</span></div>
-                  <div class="cell header">Actual 1</div>
-                  <div class="cell">FN: <span class="count" id="prob3-fn">0</span></div>
-                  <div class="cell">TP: <span class="count" id="prob3-tp">0</span></div>
-                </div>
-              </div>
-            </div>
-            <div class="problem-actions">
-              <button data-copy="3">Copy CSV</button>
-              <button data-reveal="3">Reveal confusion</button>
-            </div>
-          </div>
+        </div>
+        <div class="precision-info">
+          <div class="precision-eq">Fallout (FPR) = FP / (FP + TN)</div>
+          <div class="precision-calc">At threshold x = <code id="fprTDisp">0.00</code></div>
+          <div class="precision-calc">= <code id="fprEqPlug">0 / (0 + 0) = 0.00</code></div>
+          <div class="cm-subtle">We treat FPR as 0.00 when there are no actual negatives (FP + TN = 0).</div>
+        </div>
+        <div class="precision-info" style="margin-top:12px;">
+          <div class="precision-eq">True Positive Rate (TPR) = TP / (TP + FN)</div>
+          <div class="precision-calc">At threshold x = <code id="tprTDisp">0.00</code></div>
+          <div class="precision-calc">= <code id="tprEqPlug">0 / (0 + 0) = 1.00</code></div>
+          <div class="cm-subtle">TPR is the same as recall; we treat it as 1.00 when there are no actual positives (TP + FN = 0).</div>
+        </div>
+
+        <div style="margin-top:12px;">
+          <h4 style="margin:0 0 8px;">ROC curve (TPR vs FPR)</h4>
+          <div class="mini-chart-wrap"><canvas id="rocCurve"></canvas></div>
         </div>
       </section>
       <hr class="section-hr" />
@@ -997,6 +942,144 @@
       }
 
       updatePRCombined();
+
+      // ---------------------------
+      // ROC section: Fallout (False Positive Rate)
+      // ---------------------------
+      const t5Input = document.getElementById('t5');
+      const t5Label = document.getElementById('t5Val');
+      let t5 = 0.0;
+      if (t5Input) {
+        t5Input.min = String(Math.floor(xMin));
+        t5Input.max = String(Math.ceil(xMax));
+        t5Input.step = '0.01';
+        t5Input.value = String(xMin.toFixed(2));
+        t5 = parseFloat(t5Input.value);
+        if (t5Label) t5Label.textContent = t5.toFixed(2);
+      }
+
+      function fprAt(threshold) {
+        // fallout / false positive rate = FP / (FP + TN) among actual negatives (blue class)
+        let FP = 0, TN = 0;
+        for (const p of state.blue) { // actual negatives
+          const pred = p.x >= threshold ? 1 : 0;
+          if (pred === 1) FP++; else TN++;
+        }
+        return (FP + TN) === 0 ? 0.0 : FP / (FP + TN);
+      }
+
+      const rocPtsCtx = document.getElementById('rocPoints')?.getContext('2d');
+      const rocFprCtx = document.getElementById('rocFPR')?.getContext('2d');
+      const rocTprCtx = document.getElementById('rocTPR')?.getContext('2d');
+      const rocCurveCtx = document.getElementById('rocCurve')?.getContext('2d');
+      let rocPointsChart = null, rocFprChart = null, rocTprChart = null, rocCurveChart = null;
+      // Helper TPR at threshold
+      function tprAt(threshold) {
+        let TP = 0, FN = 0;
+        for (const p of state.red) { const pred = p.x >= threshold ? 1 : 0; if (pred === 1) TP++; else FN++; }
+        return (TP + FN) === 0 ? 1.0 : TP / (TP + FN);
+      }
+      if (rocPtsCtx && rocFprCtx) {
+        const miniDataROC = {
+          datasets: [
+            { label: 'Blue (y=0)', type: 'scatter', data: state.blue, backgroundColor: 'rgba(54,162,235,0.9)', borderColor: 'rgba(54,162,235,1)', pointRadius: 3, pointHoverRadius: 0 },
+            { label: 'Red (y=1)', type: 'scatter', data: state.red, backgroundColor: 'rgba(255,99,132,0.9)', borderColor: 'rgba(255,99,132,1)', pointRadius: 3, pointHoverRadius: 0 },
+            { label: 'Threshold x', type: 'line', data: [ { x: t5, y: 0 }, { x: t5, y: 1 } ], borderColor: 'rgba(107,114,128,1)', borderWidth: 1.5, borderDash: [6,6], pointRadius: 0, pointHoverRadius: 0 }
+          ]
+        };
+        rocPointsChart = new Chart(rocPtsCtx, {
+          type: 'scatter', data: miniDataROC,
+          options: { responsive: true, maintainAspectRatio: false, events: [], plugins: { legend: { display:false }, tooltip:{ enabled:false } }, scales: { x:{ type:'linear', min: chart.options.scales.x.min, max: chart.options.scales.x.max, grid:{ color:'rgba(0,0,0,0.06)' }, ticks:{ color:'#475569' } }, y:{ min:-0.1, max:1.1, grid:{ color:'rgba(0,0,0,0.06)' }, ticks:{ color:'#475569' } } } }
+        });
+
+        const fxs = linspace(xMin, xMax, 200);
+        const fprSeries = fxs.map(x => ({ x, y: fprAt(x) }));
+        const fprData = {
+          datasets: [
+            { label: 'FPR vs threshold', type: 'line', data: fprSeries, borderColor: 'rgba(234,88,12,1)', borderWidth: 2, pointRadius: 0, pointHoverRadius: 0, cubicInterpolationMode:'monotone', tension:0.1 },
+            { label: 'Current threshold', type: 'scatter', data: [ { x: t5, y: fprAt(t5) } ], backgroundColor: 'rgba(234,88,12,1)', borderColor:'rgba(234,88,12,1)', pointRadius: 4, pointHoverRadius: 0 }
+          ]
+        };
+        rocFprChart = new Chart(rocFprCtx, {
+          type: 'line', data: fprData,
+          options: { responsive: true, maintainAspectRatio: false, events: [], plugins: { legend:{ display:false }, tooltip:{ enabled:false } }, scales: { x:{ type:'linear', min: chart.options.scales.x.min, max: chart.options.scales.x.max, grid:{ color:'rgba(0,0,0,0.06)' }, ticks:{ color:'#475569' }, title:{ display:true, text:'threshold x', color:'#1f2937' } }, y:{ min:0, max:1.05, grid:{ color:'rgba(0,0,0,0.06)' }, ticks:{ color:'#475569' }, title:{ display:true, text:'fallout (FPR)', color:'#1f2937' } } } }
+        });
+
+        // TPR vs threshold
+        if (rocTprCtx) {
+          const tprSeries = fxs.map(x => ({ x, y: tprAt(x) }));
+          const tprData = {
+            datasets: [
+              { label: 'TPR vs threshold', type: 'line', data: tprSeries, borderColor: 'rgba(99,102,241,1)', borderWidth: 2, pointRadius: 0, pointHoverRadius: 0, cubicInterpolationMode:'monotone', tension:0.1 },
+              { label: 'Current threshold', type: 'scatter', data: [ { x: t5, y: tprAt(t5) } ], backgroundColor: 'rgba(99,102,241,1)', borderColor:'rgba(99,102,241,1)', pointRadius: 4, pointHoverRadius: 0 }
+            ]
+          };
+          rocTprChart = new Chart(rocTprCtx, {
+            type: 'line', data: tprData,
+            options: { responsive: true, maintainAspectRatio: false, events: [], plugins: { legend:{ display:false }, tooltip:{ enabled:false } }, scales: { x:{ type:'linear', min: chart.options.scales.x.min, max: chart.options.scales.x.max, grid:{ color:'rgba(0,0,0,0.06)' }, ticks:{ color:'#475569' }, title:{ display:true, text:'threshold x', color:'#1f2937' } }, y:{ min:0, max:1.05, grid:{ color:'rgba(0,0,0,0.06)' }, ticks:{ color:'#475569' }, title:{ display:true, text:'true positive rate (TPR)', color:'#1f2937' } } } }
+          });
+        }
+
+        // ROC curve (TPR vs FPR)
+        if (rocCurveCtx) {
+          const rocPoints = fxs.map(x => ({ x: fprAt(x), y: tprAt(x) }));
+          const rocData = {
+            datasets: [
+              { label: 'ROC curve', type: 'line', data: rocPoints, borderColor: '#000000', borderWidth: 2, pointRadius: 0, pointHoverRadius: 0, tension: 0.1 },
+              { label: 'Current point', type: 'scatter', data: [ { x: fprAt(t5), y: tprAt(t5) } ], backgroundColor: '#000000', borderColor: '#000000', pointRadius: 5, pointHoverRadius: 0 }
+            ]
+          };
+          rocCurveChart = new Chart(rocCurveCtx, {
+            type: 'line', data: rocData,
+            options: { responsive: true, maintainAspectRatio: false, events: [], plugins: { legend:{ display:true, labels:{ color:'#1f2937' } }, tooltip:{ enabled:false } }, scales: { x:{ type:'linear', min:-0.02, max:1.02, grid:{ color:'rgba(0,0,0,0.06)' }, ticks:{ color:'#475569' }, title:{ display:true, text:'FPR', color:'#1f2937' } }, y:{ min:-0.02, max:1.02, grid:{ color:'rgba(0,0,0,0.06)' }, ticks:{ color:'#475569' }, title:{ display:true, text:'TPR', color:'#1f2937' } } } }
+          });
+        }
+      }
+
+      function updateROC() {
+        if (!rocPointsChart || !rocFprChart) return;
+        rocPointsChart.data.datasets[2].data = [ { x: t5, y: 0 }, { x: t5, y: 1 } ];
+        rocPointsChart.update('none');
+        const yFPR = fprAt(t5);
+        rocFprChart.data.datasets[1].data = [ { x: t5, y: yFPR } ];
+        rocFprChart.update('none');
+        if (rocTprChart) {
+          const yTPR = tprAt(t5);
+          rocTprChart.data.datasets[1].data = [ { x: t5, y: yTPR } ];
+          rocTprChart.update('none');
+        }
+        if (rocCurveChart) {
+          rocCurveChart.data.datasets[1].data = [ { x: yFPR, y: tprAt(t5) } ];
+          rocCurveChart.update('none');
+        }
+        if (t5Label) t5Label.textContent = t5.toFixed(2);
+        // Update formula display with FP and TN counts
+        let FP = 0, TN = 0;
+        for (const p of state.blue) { const pred = p.x >= t5 ? 1 : 0; if (pred === 1) FP++; else TN++; }
+        const fprTDisp = document.getElementById('fprTDisp');
+        const fprEqPlug = document.getElementById('fprEqPlug');
+        if (fprTDisp) fprTDisp.textContent = t5.toFixed(2);
+        if (fprEqPlug) {
+          const val = (FP + TN) === 0 ? 0.0 : FP / (FP + TN);
+          fprEqPlug.textContent = `${FP} / (${FP} + ${TN}) = ${val.toFixed(2)}`;
+        }
+        // Update TPR formula
+        let TP = 0, FN = 0;
+        for (const p of state.red)  { const pred = p.x >= t5 ? 1 : 0; if (pred === 1) TP++; else FN++; }
+        const tprTDisp = document.getElementById('tprTDisp');
+        const tprEqPlug = document.getElementById('tprEqPlug');
+        if (tprTDisp) tprTDisp.textContent = t5.toFixed(2);
+        if (tprEqPlug) {
+          const tprVal = (TP + FN) === 0 ? 1.0 : TP / (TP + FN);
+          tprEqPlug.textContent = `${TP} / (${TP} + ${FN}) = ${tprVal.toFixed(2)}`;
+        }
+      }
+
+      if (t5Input) {
+        t5Input.addEventListener('input', (e) => { t5 = parseFloat(e.target.value); updateROC(); });
+      }
+
+      updateROC();
     </script>
   </body>
 </html>
